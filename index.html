@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>簡易行事曆</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 20px;
+    }
+    
+    .calendar-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    .calendar-header {
+      background: #007bff;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .nav-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    
+    .nav-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    
+    .day-header {
+      background: #f8f9fa;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+      border: 1px solid #dee2e6;
+    }
+    
+    .calendar-day {
+      min-height: 100px;
+      border: 1px solid #dee2e6;
+      padding: 8px;
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .calendar-day:hover {
+      background: #f8f9fa;
+    }
+    
+    .calendar-day.other-month {
+      background: #f8f9fa;
+      color: #6c757d;
+    }
+    
+    .calendar-day.today {
+      background: #e3f2fd;
+      font-weight: bold;
+    }
+    
+    .day-number {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    
+    .event {
+      background: #28a745;
+      color: white;
+      padding: 2px 6px;
+      margin: 2px 0;
+      border-radius: 3px;
+      font-size: 12px;
+      cursor: pointer;
+      word-wrap: break-word;
+    }
+    
+    .event:hover {
+      background: #218838;
+    }
+    
+    /* 模態框 */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+    
+    .modal-content {
+      background-color: white;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+    }
+    
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    
+    .close:hover {
+      color: black;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    .btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    
+    .btn:hover {
+      background: #0056b3;
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+    }
+    
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    
+    .controls {
+      text-align: center;
+      padding: 15px;
+      background: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="calendar-container">
+    <div class="controls">
+      <button class="btn" onclick="showModal()">新增事件</button>
+    </div>
+    
+    <div class="calendar-header">
+      <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
+      <h2 id="monthYear"></h2>
+      <button class="nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+    
+    <div class="calendar-grid">
+      <div class="day-header">日</div>
+      <div class="day-header">一</div>
+      <div class="day-header">二</div>
+      <div class="day-header">三</div>
+      <div class="day-header">四</div>
+      <div class="day-header">五</div>
+      <div class="day-header">六</div>
+    </div>
+    
+    <div class="calendar-grid" id="calendar"></div>
+  </div>
+
+  <!-- 模態框 -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="hideModal()">&times;</span>
+      <h3 id="modalTitle">新增事件</h3>
+      
+      <div class="form-group">
+        <label>事件標題：</label>
+        <input type="text" id="eventTitle">
+      </div>
+      
+      <div class="form-group">
+        <label>日期：</label>
+        <input type="date" id="eventDate">
+      </div>
+      
+      <div class="form-group">
+        <label>時間：</label>
+        <input type="time" id="eventTime" value="09:00">
+      </div>
+      
+      <div class="form-group">
+        <label>描述：</label>
+        <textarea id="eventDesc" rows="3"></textarea>
+      </div>
+      
+      <button class="btn" onclick="saveEvent()">儲存</button>
+      <button class="btn" onclick="hideModal()">取消</button>
+      <button class="btn btn-danger" id="deleteBtn" onclick="deleteEvent()" style="display:none;">刪除</button>
+    </div>
+  </div>
+
+  <script>
+    // 全域變數
+    let currentDate = new Date();
+    let events = [];
+    let editingEvent = null;
+    
+    // 初始化
+    function init() {
+      // 添加一些範例事件
+      events = [
+        {
+          id: '1',
+          title: '會議',
+          date: formatDate(new Date()),
+          time: '10:00',
+          desc: '重要會議'
+        }
+      ];
+      renderCalendar();
+    }
+    
+    // 格式化日期
+    function formatDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
+    // 渲染行事曆
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      
+      // 更新標題
+      const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', 
+                         '7月', '8月', '9月', '10月', '11月', '12月'];
+      document.getElementById('monthYear').textContent = `${year}年 ${monthNames[month]}`;
+      
+      // 計算月份第一天和最後一天
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+      
+      const calendar = document.getElementById('calendar');
+      calendar.innerHTML = '';
+      
+      const today = formatDate(new Date());
+      
+      // 產生日期格子
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateStr = formatDate(date);
+        
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'calendar-day';
+        
+        if (date.getMonth() !== month) {
+          dayDiv.classList.add('other-month');
+        }
+        
+        if (dateStr === today) {
+          dayDiv.classList.add('today');
+        }
+        
+        dayDiv.innerHTML = `<div class="day-number">${date.getDate()}</div>`;
+        dayDiv.onclick = () => selectDate(dateStr);
+        
+        // 添加事件
+        const dayEvents = events.filter(event => event.date === dateStr);
+        dayEvents.forEach(event => {
+          const eventDiv = document.createElement('div');
+          eventDiv.className = 'event';
+          eventDiv.textContent = event.title;
+          eventDiv.onclick = (e) => {
+            e.stopPropagation();
+            editEvent(event);
+          };
+          dayDiv.appendChild(eventDiv);
+        });
+        
+        calendar.appendChild(dayDiv);
+      }
+    }
+    
+    // 選擇日期
+    function selectDate(date) {
+      document.getElementById('eventDate').value = date;
+      showModal();
+    }
+    
+    // 顯示模態框
+    function showModal() {
+      editingEvent = null;
+      document.getElementById('modalTitle').textContent = '新增事件';
+      document.getElementById('deleteBtn').style.display = 'none';
+      document.getElementById('eventTitle').value = '';
+      document.getElementById('eventDesc').value = '';
+      document.getElementById('eventTime').value = '09:00';
+      document.getElementById('modal').style.display = 'block';
+    }
+    
+    // 隱藏模態框
+    function hideModal() {
+      document.getElementById('modal').style.display = 'none';
+    }
+    
+    // 編輯事件
+    function editEvent(event) {
+      editingEvent = event;
+      document.getElementById('modalTitle').textContent = '編輯事件';
+      document.getElementById('deleteBtn').style.display = 'inline-block';
+      document.getElementById('eventTitle').value = event.title;
+      document.getElementById('eventDate').value = event.date;
+      document.getElementById('eventTime').value = event.time;
+      document.getElementById('eventDesc').value = event.desc || '';
+      document.getElementById('modal').style.display = 'block';
+    }
+    
+    // 儲存事件
+    function saveEvent() {
+      const title = document.getElementById('eventTitle').value.trim();
+      const date = document.getElementById('eventDate').value;
+      const time = document.getElementById('eventTime').value;
+      const desc = document.getElementById('eventDesc').value.trim();
+      
+      if (!title) {
+        alert('請輸入事件標題');
+        return;
+      }
+      
+      if (!date) {
+        alert('請選擇日期');
+        return;
+      }
+      
+      if (editingEvent) {
+        // 編輯現有事件
+        editingEvent.title = title;
+        editingEvent.date = date;
+        editingEvent.time = time;
+        editingEvent.desc = desc;
+      } else {
+        // 新增事件
+        events.push({
+          id: Date.now().toString(),
+          title: title,
+          date: date,
+          time: time,
+          desc: desc
+        });
+      }
+      
+      renderCalendar();
+      hideModal();
+    }
+    
+    // 刪除事件
+    function deleteEvent() {
+      if (editingEvent && confirm('確定要刪除此事件嗎？')) {
+        events = events.filter(e => e.id !== editingEvent.id);
+        renderCalendar();
+        hideModal();
+      }
+    }
+    
+    // 切換月份
+    function changeMonth(direction) {
+      currentDate.setMonth(currentDate.getMonth() + direction);
+      renderCalendar();
+    }
+    
+    // 點擊模態框外部關閉
+    window.onclick = function(event) {
+      const modal = document.getElementById('modal');
+      if (event.target === modal) {
+        hideModal();
+      }
+    }
+    
+    // 啟動
+    init();
+  </script>
+</body>
+</html>
