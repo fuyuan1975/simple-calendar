@@ -15,6 +15,10 @@
   <!-- 內嵌 Manifest -->
   <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIuWutumrlOWFseS6q+ihjOS6i+abuCIsCiAgInNob3J0X25hbWUiOiAi6KGM5LqL5piIIiwKICAic3RhcnRfdXJsIjogIi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJ0aGVtZV9jb2xvciI6ICIjMDA3YmZmIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZmZmZmZmIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyUzRSUzQ3JlY3Qgd2lkdGg9JzEwMCcgaGVpZ2h0PScxMDAnIGZpbGw9JyUyMzAwN2JmZicvJTNFJTNDdGV4dCB5PSc3MCcgZm9udC1zaXplPSc2MCcgZmlsbD0nd2hpdGUnIHRleHQtYW5jaG9yPSdtaWRkbGUnIHg9JzUwJyUzRSVGMCU5RiU5MyU4NSUzQy90ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyUzRSUzQ3JlY3Qgd2lkdGg9JzEwMCcgaGVpZ2h0PScxMDAnIGZpbGw9JyUyMzAwN2JmZicvJTNFJTNDdGV4dCB5PSc3MCcgZm9udC1zaXplPSc2MCcgZmlsbD0nd2hpdGUnIHRleHQtYW5jaG9yPSdtaWRkbGUnIHg9JzUwJyUzRSVGMCU5RiU5MyU4NSUzQy90ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
   
+  <!-- Firebase SDK -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+  
   <!-- 圖示設定 -->
   <link rel="icon" type="image/png" sizes="192x192" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007bff'/%3E%3Ctext y='70' font-size='60' fill='white' text-anchor='middle' x='50'%3E📅%3C/text%3E%3C/svg%3E">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007bff'/%3E%3Ctext y='70' font-size='60' fill='white' text-anchor='middle' x='50'%3E📅%3C/text%3E%3C/svg%3E">
@@ -298,6 +302,8 @@
     
     <div class="controls">
       <button class="btn" onclick="showModal()">新增事件</button>
+      <button class="btn" onclick="syncWithFirebase()" id="syncBtn">🔄 同步</button>
+      <div id="syncStatus" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
     </div>
     
     <div class="calendar-header">
@@ -363,12 +369,160 @@
   </div>
 
   <script>
+    // Firebase 配置
+    const firebaseConfig = {
+      apiKey: "AIzaSyDqxxmcX5TR6Ylc8dtxxaAc1FXt3p57QAE",
+      authDomain: "family-calendar-5bb01.firebaseapp.com",
+      projectId: "family-calendar-5bb01",
+      storageBucket: "family-calendar-5bb01.firebasestorage.app",
+      messagingSenderId: "7720815747710",
+      appId: "1:7720815747710:web:cfafa8b55b66ed6b428997",
+      measurementId: "G-09E9WSSPC6"
+    };
+    
     // 全域變數
     let currentDate = new Date();
     let events = [];
     let editingEvent = null;
     let currentFilter = 'all';
     let deferredPrompt; // PWA 安裝提示
+    let db = null; // Firebase Firestore 資料庫
+    let isFirebaseEnabled = false;
+    
+    // 初始化 Firebase
+    function initFirebase() {
+      try {
+        // 檢查配置是否已設定
+        if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+          console.log('Firebase 配置尚未設定，使用本地模式');
+          updateSyncStatus('本地模式 - 需要設定 Firebase');
+          return false;
+        }
+        
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        isFirebaseEnabled = true;
+        
+        console.log('Firebase 初始化成功');
+        updateSyncStatus('已連接雲端資料庫');
+        
+        // 載入雲端事件
+        loadEventsFromFirebase();
+        
+        // 監聽即時更新
+        setupRealtimeListener();
+        
+        return true;
+      } catch (error) {
+        console.error('Firebase 初始化失敗:', error);
+        updateSyncStatus('雲端連接失敗，使用本地模式');
+        return false;
+      }
+    }
+    
+    // 更新同步狀態
+    function updateSyncStatus(message) {
+      const statusEl = document.getElementById('syncStatus');
+      if (statusEl) {
+        statusEl.textContent = message;
+      }
+    }
+    
+    // 從 Firebase 載入事件
+    async function loadEventsFromFirebase() {
+      if (!isFirebaseEnabled) return;
+      
+      try {
+        updateSyncStatus('正在載入事件...');
+        const snapshot = await db.collection('familyEvents').get();
+        const cloudEvents = [];
+        
+        snapshot.forEach(doc => {
+          cloudEvents.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        events = cloudEvents;
+        renderCalendar();
+        updateSyncStatus(`已載入 ${events.length} 個事件`);
+        console.log('從雲端載入事件:', events.length);
+      } catch (error) {
+        console.error('載入事件失敗:', error);
+        updateSyncStatus('載入失敗，使用本地資料');
+      }
+    }
+    
+    // 設置即時監聽
+    function setupRealtimeListener() {
+      if (!isFirebaseEnabled) return;
+      
+      db.collection('familyEvents').onSnapshot((snapshot) => {
+        console.log('收到即時更新');
+        const cloudEvents = [];
+        
+        snapshot.forEach(doc => {
+          cloudEvents.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        events = cloudEvents;
+        renderCalendar();
+        updateSyncStatus(`即時同步 - ${events.length} 個事件`);
+      }, (error) => {
+        console.error('即時監聽錯誤:', error);
+        updateSyncStatus('同步中斷，請重新整理');
+      });
+    }
+    
+    // 儲存事件到 Firebase
+    async function saveEventToFirebase(event) {
+      if (!isFirebaseEnabled) return;
+      
+      try {
+        await db.collection('familyEvents').doc(event.id).set({
+          title: event.title,
+          date: event.date,
+          time: event.time,
+          desc: event.desc,
+          member: event.member,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('事件已儲存到雲端:', event.title);
+      } catch (error) {
+        console.error('儲存事件失敗:', error);
+        updateSyncStatus('儲存失敗，請重試');
+      }
+    }
+    
+    // 從 Firebase 刪除事件
+    async function deleteEventFromFirebase(eventId) {
+      if (!isFirebaseEnabled) return;
+      
+      try {
+        await db.collection('familyEvents').doc(eventId).delete();
+        console.log('事件已從雲端刪除:', eventId);
+      } catch (error) {
+        console.error('刪除事件失敗:', error);
+        updateSyncStatus('刪除失敗，請重試');
+      }
+    }
+    
+    // 手動同步
+    async function syncWithFirebase() {
+      if (!isFirebaseEnabled) {
+        alert('Firebase 尚未設定，請先設定雲端資料庫配置');
+        return;
+      }
+      
+      updateSyncStatus('正在同步...');
+      await loadEventsFromFirebase();
+    }
     
     // PWA 相關功能
     window.addEventListener('load', () => {
@@ -501,36 +655,11 @@
     
     // 初始化
     function init() {
-      // 添加家庭成員的範例事件
-      const today = formatDate(new Date());
-      const tomorrow = formatDate(new Date(Date.now() + 24*60*60*1000));
+      // 初始化空的事件陣列
+      events = [];
       
-      events = [
-        {
-          id: '1',
-          title: '爸爸開會',
-          date: today,
-          time: '10:00',
-          desc: '重要會議',
-          member: 'dad'
-        },
-        {
-          id: '2',
-          title: '媽媽買菜',
-          date: today,
-          time: '14:00',
-          desc: '去市場',
-          member: 'mom'
-        },
-        {
-          id: '3',
-          title: '家庭聚餐',
-          date: tomorrow,
-          time: '18:00',
-          desc: '全家一起吃飯',
-          member: 'family'
-        }
-      ];
+      // 初始化 Firebase
+      initFirebase();
       
       renderCalendar();
     }
@@ -685,16 +814,24 @@
         editingEvent.time = time;
         editingEvent.desc = desc;
         editingEvent.member = member;
+        
+        // 儲存到 Firebase
+        saveEventToFirebase(editingEvent);
       } else {
         // 新增事件
-        events.push({
+        const newEvent = {
           id: Date.now().toString(),
           title: title,
           date: date,
           time: time,
           desc: desc,
           member: member
-        });
+        };
+        
+        events.push(newEvent);
+        
+        // 儲存到 Firebase
+        saveEventToFirebase(newEvent);
       }
       
       renderCalendar();
@@ -721,12 +858,15 @@
       console.log('刪除前事件數量:', events.length);
       console.log('要刪除的事件ID:', editingEvent.id);
       
-      // 執行刪除
+      // 從本地陣列中刪除
       const originalLength = events.length;
       events = events.filter(e => e.id !== editingEvent.id);
       
       console.log('刪除後事件數量:', events.length);
       console.log('刪除成功:', events.length < originalLength);
+      
+      // 從 Firebase 刪除
+      deleteEventFromFirebase(editingEvent.id);
       
       // 先關閉模態框，清空 editingEvent
       hideModal();
