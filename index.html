@@ -12,6 +12,9 @@
   <meta name="apple-mobile-web-app-title" content="家庭行事曆">
   <meta name="mobile-web-app-capable" content="yes">
   
+  <!-- 內嵌 Manifest -->
+  <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIuWutumrlOWFseS6q+ihjOS6i+abuCIsCiAgInNob3J0X25hbWUiOiAi6KGM5LqL5piIIiwKICAic3RhcnRfdXJsIjogIi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJ0aGVtZV9jb2xvciI6ICIjMDA3YmZmIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZmZmZmZmIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyUzRSUzQ3JlY3Qgd2lkdGg9JzEwMCcgaGVpZ2h0PScxMDAnIGZpbGw9JyUyMzAwN2JmZicvJTNFJTNDdGV4dCB5PSc3MCcgZm9udC1zaXplPSc2MCcgZmlsbD0nd2hpdGUnIHRleHQtYW5jaG9yPSdtaWRkbGUnIHg9JzUwJyUzRSVGMCU5RiU5MyU4NSUzQy90ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyUzRSUzQ3JlY3Qgd2lkdGg9JzEwMCcgaGVpZ2h0PScxMDAnIGZpbGw9JyUyMzAwN2JmZicvJTNFJTNDdGV4dCB5PSc3MCcgZm9udC1zaXplPSc2MCcgZmlsbD0nd2hpdGUnIHRleHQtYW5jaG9yPSdtaWRkbGUnIHg9JzUwJyUzRSVGMCU5RiU5MyU4NSUzQy90ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+  
   <!-- 圖示設定 -->
   <link rel="icon" type="image/png" sizes="192x192" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007bff'/%3E%3Ctext y='70' font-size='60' fill='white' text-anchor='middle' x='50'%3E📅%3C/text%3E%3C/svg%3E">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23007bff'/%3E%3Ctext y='70' font-size='60' fill='white' text-anchor='middle' x='50'%3E📅%3C/text%3E%3C/svg%3E">
@@ -276,9 +279,9 @@
   <div class="calendar-container">
     <!-- PWA 安裝提示橫幅 -->
     <div id="installBanner" class="install-banner">
-      <span>📱 可以安裝到手機主畫面，像真的 APP 一樣使用！</span>
-      <button onclick="installPWA()">立即安裝</button>
-      <button onclick="hideInstallBanner()">稍後</button>
+      <span>📱 可以安裝到手機主畫面！</span>
+      <button onclick="showInstallGuide()">查看安裝指南</button>
+      <button onclick="hideInstallBanner()">不用了</button>
       <button class="close-banner" onclick="hideInstallBanner()">&times;</button>
     </div>
     
@@ -391,6 +394,9 @@
         hideInstallBanner();
         alert('🎉 家庭行事曆已成功安裝到您的裝置！');
       });
+      
+      // 如果沒有自動觸發安裝提示，延遲顯示手動安裝橫幅
+      checkShowInstallBanner();
     });
     
     // 顯示安裝橫幅
@@ -411,6 +417,37 @@
       }
     }
     
+    // 顯示安裝指南
+    function showInstallGuide() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      let guide = '📱 手動安裝步驟：\n\n';
+      
+      if (isIOS) {
+        guide += '🍎 iPhone/iPad：\n';
+        guide += '1. 點擊下方的「分享」按鈕 📤\n';
+        guide += '2. 選擇「加入主畫面」\n';
+        guide += '3. 確認安裝\n';
+        guide += '4. 在主畫面就會出現行事曆圖示！';
+      } else if (isAndroid) {
+        guide += '🤖 Android：\n';
+        guide += '1. 點擊瀏覽器選單 ⋮\n';
+        guide += '2. 選擇「加入主畫面」或「安裝應用程式」\n';
+        guide += '3. 確認安裝\n';
+        guide += '4. 在主畫面就會出現行事曆圖示！';
+      } else {
+        guide += '💻 電腦版：\n';
+        guide += '1. 點擊網址列右側的「安裝」圖示\n';
+        guide += '2. 或在瀏覽器選單中選擇「安裝應用程式」\n';
+        guide += '3. 確認安裝';
+      }
+      
+      guide += '\n\n安裝後就可以像真的 APP 一樣使用！';
+      alert(guide);
+      hideInstallBanner();
+    }
+    
     // 安裝 PWA
     function installPWA() {
       console.log('用戶點擊安裝 PWA');
@@ -428,9 +465,22 @@
           hideInstallBanner();
         });
       } else {
-        // 手動指引安裝
-        alert('請在瀏覽器選單中選擇「加入主畫面」或「安裝應用程式」');
-        hideInstallBanner();
+        // 顯示手動安裝指南
+        showInstallGuide();
+      }
+    }
+    
+    // 檢查是否應該顯示安裝橫幅
+    function checkShowInstallBanner() {
+      // 檢查是否已經是 PWA 模式
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      const isInWebApp = window.navigator.standalone; // iOS
+      
+      if (!isStandalone && !isInWebApp) {
+        // 延遲顯示，讓用戶先體驗功能
+        setTimeout(() => {
+          showInstallBanner();
+        }, 5000); // 5秒後顯示
       }
     }
     
